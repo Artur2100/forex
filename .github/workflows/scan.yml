@@ -26,6 +26,8 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
+      # actions/cache automatically saves the cache in its post-job hook.
+      # A restore prefix allows the next scheduled run to reuse the latest state.
       - name: Restore alert state
         uses: actions/cache@v4
         with:
@@ -37,15 +39,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
       - name: Run market intelligence scan
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python -m fia.main
-
-      - name: Save alert state
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: fia_state.json
-          key: fia-state-${{ github.run_id }}
