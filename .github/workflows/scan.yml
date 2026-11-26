@@ -6,7 +6,7 @@ on:
     - cron: "*/15 * * * *"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: forex-intelligence-scan
@@ -26,16 +26,6 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
-      # actions/cache automatically saves the cache in its post-job hook.
-      # A restore prefix allows the next scheduled run to reuse the latest state.
-      - name: Restore alert state
-        uses: actions/cache@v4
-        with:
-          path: fia_state.json
-          key: fia-state-${{ github.run_id }}
-          restore-keys: |
-            fia-state-
-
       - name: Install dependencies
         run: pip install -r requirements.txt
 
@@ -47,3 +37,13 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python -m fia.main
+
+      - name: Commit journal and alert state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add journal.csv fia_state.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update alert journal [skip ci]"
+            git push
+          fi
