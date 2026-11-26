@@ -51,19 +51,14 @@ def main():
         if key not in state.get("sent", []):
             state.setdefault("sent", []).append(key)
             d1, levels = decision["d1"], decision["levels"]
+            side = "BUY" if decision["direction"] == "LONG" else "SELL"
             msg = (
-                f"⚠️ ТЕХНИЧЕСКОЕ ПРЕДУПРЕЖДЕНИЕ\n"
-                f"{symbol} — {decision['direction']} bias\n"
-                f"D1: {d1['trend']} ({d1['ema_slope']}) | H1: {h1['trend']} ({h1['ema_slope']})\n"
-                f"Цена закрытия H1: {fmt_price(h1['close'])}\n"
-                f"RSI14 H1: {h1['rsi']:.1f} | ADX14 H1: {h1['adx']:.1f}\n"
-                f"Свеча H1: {h1['bar_time']} UTC | возраст: {h1['age_hours']:.1f} ч\n"
-                f"Ориентир Entry: {fmt_price(levels['entry_reference'])}\n"
-                f"Иллюстративный SL: {fmt_price(levels['stop_loss'])}\n"
-                f"Иллюстративный TP: {fmt_price(levels['take_profit'])}\n"
-                f"Модельный R:R: 1:{levels['rr_target']:.0f}\n\n"
-                "Это НЕ торговый сигнал. Котировки — сторонний источник, не поток Альфа-Форекс. "
-                "Уровни не учитывают спред, комиссии, проскальзывание и спецификацию контракта."
+                f"👀 {symbol} · {side} · НАБЛЮДЕНИЕ\\n"
+                f"Вход: {fmt_price(levels['entry_reference'])}\\n"
+                f"SL: {fmt_price(levels['stop_loss'])}\\n"
+                f"TP: {fmt_price(levels['take_profit'])}\\n"
+                f"R:R 1:{levels['rr_target']:.0f}\\n"
+                "⚠️ Предварительный сетап, не торговый сигнал. Котировка сторонняя."
             )
             messages.append(msg)
         # Record each distinct pre-alert, even if a Telegram notification was previously sent.
@@ -74,14 +69,9 @@ def main():
     stats = journal_summary(journal)
     wr = "н/д" if stats["win_rate_pct"] is None else f"{stats['win_rate_pct']:.1f}%"
     digest = (
-        f"Forex Intelligence v0.5 — scan {now}\n"
-        f"Инструментов: {len(SYMBOLS)} | Новых предупреждений: {len(messages)}\n"
-        f"Статусы: " + ", ".join(f"{k}={v}" for k, v in sorted({d['status']: sum(x['status']==d['status'] for x in decisions) for d in decisions}.items())) + "\n"
-        f"Журнал: {stats['total_alerts']} предупреждений | открыто: {stats['open']} | TP: {stats['wins']} | SL: {stats['losses']}\n"
-        f"Win rate по закрытым TP/SL: {wr} | модельный результат: {stats['net_r']:+.1f}R\n"
-        f"Неоднозначно: {stats['ambiguous']} | истекло: {stats['expired']}\n"
-        f"RSS-заголовков: {len(news.get('items', []))} | календарь событий не подключён.\n"
-        "Результаты журнала гипотетические: это исходы предупреждений, а не фактических сделок."
+        f"Скан {now}\\n"
+        f"Пар: {len(SYMBOLS)} | новых сетапов: {len(messages)}\\n"
+        f"Журнал: {stats['total_alerts']} | открыто: {stats['open']} | TP: {stats['wins']} | SL: {stats['losses']} | WR: {wr}"
     )
     if diagnostics:
         digest += "\n\nДиагностика (первые 5):\n" + "\n".join(diagnostics[:5])
