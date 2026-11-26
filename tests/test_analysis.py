@@ -1,6 +1,7 @@
 import unittest
 from fia.risk_agent import RiskAgent
 from fia.decision_agent import ChiefAnalyst
+from fia.journal import add_alert, summary
 
 class RiskTests(unittest.TestCase):
     def test_long_levels_have_three_to_one_reward_risk(self):
@@ -28,6 +29,13 @@ class RiskTests(unittest.TestCase):
         h1 = dict(base, rsi=40.0, adx=10.0, close=100.0, atr=2.0)
         result = ChiefAnalyst().decide("TEST", {"D1": d1, "H1": h1}, {}, {}, None, RiskAgent())
         self.assertEqual(result["status"], "FILTERED")
+
+    def test_journal_adds_unique_hypothetical_alert(self):
+        d = {"symbol":"TEST","direction":"LONG","h1":{"bar_time":"2026-01-01T00:00:00+00:00"},"levels":{"entry_reference":100,"stop_loss":99,"take_profit":103}}
+        rows=[]
+        self.assertTrue(add_alert(rows,d))
+        self.assertFalse(add_alert(rows,d))
+        self.assertEqual(summary(rows)["total_alerts"],1)
 
 if __name__ == "__main__":
     unittest.main()
