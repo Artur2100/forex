@@ -1,0 +1,2 @@
+id,created_utc,symbol,direction,source,entry,sl,tp,status,outcome_r,resolved_utc,bars_to_resolution,notes
+USD/JPY|LONG|2026-11-26T14:00:00+00:00,2026-11-26T15:27:54.771680+00:00,USD/JPY,LONG,Yahoo Finance,159.201004,158.9950251,159.8189408,OPEN,,,,Hypothetical alert; assumes entry at completed H1 close; not a real executed trade.
