@@ -1,0 +1,51 @@
+name: Forex Intelligence Scan
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: forex-intelligence-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Restore alert state
+        uses: actions/cache@v4
+        with:
+          path: fia_state.json
+          key: fia-state-${{ github.run_id }}
+          restore-keys: |
+            fia-state-
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run market intelligence scan
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python -m fia.main
+
+      - name: Save alert state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: fia_state.json
+          key: fia-state-${{ github.run_id }}
