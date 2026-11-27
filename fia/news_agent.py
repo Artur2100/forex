@@ -124,7 +124,7 @@ class NewsAgent:
         high = sum(item["impact"] == "HIGH" for item in items)
         medium = sum(item["impact"] == "MEDIUM" for item in items)
         return {
-            "ready": bool(items) and not errors,
+            "ready": any(status.get("ok") for status in feed_status),
             "items": items,
             "errors": errors,
             "feed_status": feed_status,
