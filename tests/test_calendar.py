@@ -66,6 +66,38 @@ class CalendarTests(unittest.TestCase):
         self.assertTrue(result["ready"])
         self.assertEqual(result["events"], [])
 
+    def test_forex_factory_fallback_normalizes_timezone_and_filters_impact(self):
+        payload = [
+            {"title": "US CPI", "country": "USD", "date": "2026-11-27T08:30:00-05:00",
+             "impact": "High", "forecast": "0.3%", "previous": "0.2%"},
+            {"title": "Bank Holiday", "country": "USD", "date": "2026-11-27T00:00:00-05:00",
+             "impact": "Holiday", "forecast": "", "previous": ""},
+        ]
+        events = self.agent._normalize_forex_factory(payload)
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["currency"], "USD")
+        self.assertEqual(events[0]["impact"], "high")
+        self.assertEqual(events[0]["forecast"], "0.3%")
+        self.assertEqual(events[0]["time"], "2026-11-27T13:30:00+00:00")
+
+    def test_fallback_used_when_primary_provider_times_out(self):
+        response = Mock(status_code=200)
+        response.json.return_value = [{
+            "title": "US CPI", "country": "USD", "date": "2026-11-27T08:30:00-05:00",
+            "impact": "High", "forecast": "0.3%", "previous": "0.2%",
+        }]
+        self.session.get.side_effect = [
+            requests.Timeout("primary timeout"),
+            requests.Timeout("primary timeout"),
+            requests.Timeout("primary timeout"),
+            response,
+        ]
+        result = self.agent.analyze()
+        self.assertTrue(result["ready"])
+        self.assertTrue(result["fallback_used"])
+        self.assertEqual(result["provider"], "Forex Factory (weekly fallback)")
+        self.assertEqual(len(result["events"]), 1)
+
     def test_forecast_previous_and_actual_are_shown(self):
         summary = self.agent.upcoming_summary({
             "ready": True, "server_time": 1_800_000_000,
