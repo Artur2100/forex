@@ -64,3 +64,40 @@ jobs:
           if not result.get("items"):
               raise SystemExit("No recent RSS entries were returned")
           PY
+
+  telegram-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Send Telegram delivery test
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import os
+          from datetime import datetime, timezone
+          from fia.notifier import send_telegram
+          message = (
+              "🧪 Forex Intelligence Agent — проверка Telegram\n"
+              f"Время: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
+              f"GitHub run: {os.environ.get('GITHUB_RUN_ID')}\n"
+              f"Commit: {os.environ.get('GITHUB_SHA', '')[:12]}\n"
+              "Это тест доставки, торговых сигналов и ордеров нет."
+          )
+          send_telegram(message)
+          print("Telegram API accepted the test message.")
+          PY
