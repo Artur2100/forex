@@ -53,21 +53,25 @@ def main():
     messages = []
 
     for decision in decisions:
-        if decision["status"] != "TECHNICAL_PREALERT":
+        if decision["status"] not in ("TECHNICAL_PREALERT", "FINAL_SIGNAL"):
             continue
         symbol, h1 = decision["symbol"], decision["h1"]
         key = f"{symbol}|{decision['direction']}|{h1['bar_time']}"
-        if key not in state.get("sent", []):
-            state.setdefault("sent", []).append(key)
+        signal_key = ("FINAL|" if decision["status"] == "FINAL_SIGNAL" else "PRE|") + key
+        if signal_key not in state.get("sent", []):
+            state.setdefault("sent", []).append(signal_key)
             levels = decision["levels"]
             side = "BUY" if decision["direction"] == "LONG" else "SELL"
+            final_signal = decision["status"] == "FINAL_SIGNAL"
+            heading = "📣 ТОРГОВЫЙ СИГНАЛ" if final_signal else "👀 ПРЕДВАРИТЕЛЬНОЕ НАБЛЮДЕНИЕ"
             msg = (
-                f"👀 {symbol} · {side} · НАБЛЮДЕНИЕ\n"
-                f"Вход: {fmt_price(levels['entry_reference'])}\n"
-                f"SL: {fmt_price(levels['stop_loss'])}\n"
-                f"TP: {fmt_price(levels['take_profit'])}\n"
-                f"R:R 1:{levels['rr_target']:.0f}\n"
-                "⚠️ Предварительный сетап, не торговый сигнал. Котировка сторонняя."
+                f"{heading}\n"
+                f"{symbol} · {side}\n"
+                f"Вход-ориентир: {fmt_price(levels['entry_reference'])}\n"
+                f"Stop Loss: {fmt_price(levels['stop_loss'])}\n"
+                f"Take Profit: {fmt_price(levels['take_profit'])}\n"
+                f"R:R 1:{levels['rr_target']:.0f} · риск до {levels['risk_pct_reference']:.1f}%\n"
+                "Котировка внешнего источника, не MT5. Перед входом сверь цену/спред у брокера; объём рассчитай так, чтобы риск по SL не превышал 1% депозита. Исполнение вручную."
             )
             messages.append(msg)
         add_alert(journal, decision)
@@ -77,9 +81,10 @@ def main():
     stats = journal_summary(journal)
     wr = "н/д" if stats["win_rate_pct"] is None else f"{stats['win_rate_pct']:.1f}%"
     blocked = sum(d["status"] == "EVENT_RISK_BLOCK" for d in decisions)
+    final_count = sum(d["status"] == "FINAL_SIGNAL" for d in decisions)
     digest = (
         f"Скан {now}\n"
-        f"Пар: {len(SYMBOLS)} | новых сетапов: {len(messages)} | заблокировано календарём: {blocked}\n"
+        f"Пар: {len(SYMBOLS)} | финальных условий: {final_count} | новых уведомлений: {len(messages)} | заблокировано календарём: {blocked}\n"
         f"Журнал: {stats['total_alerts']} | открыто: {stats['open']} | TP: {stats['wins']} | SL: {stats['losses']} | WR: {wr}"
     )
     if diagnostics:
@@ -95,7 +100,15 @@ def main():
         f" | MEDIUM {news.get('medium_impact_count', 0)}"
         f" | ошибок RSS: {len(news.get('errors', []))}"
     )
-    digest += "\nКалендарь ShowMyTrades: расписание и значения; прогнозы могут отсутствовать. Все времена UTC."
+    if calendar.get("ready"):
+        digest += f"\nИсточник календаря: {calendar.get('provider', 'unknown')}."
+        if calendar.get("coverage_warning"):
+            digest += f"\n⚠️ {calendar['coverage_warning']}"
+        if calendar.get("errors"):
+            digest += "\nПервичный источник недоступен: " + "; ".join(calendar["errors"][:1])
+    else:
+        digest += "\nКалендарь недоступен во всех источниках: новые предупреждения заблокированы."
+    digest += "\nВремя событий указано в UTC. RSS — отдельный новостной монитор, не замена календарю."
     print(digest)
     send_telegram(digest[:3900])
     for msg in messages:

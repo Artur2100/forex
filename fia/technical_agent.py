@@ -39,22 +39,33 @@ class TechnicalAgent:
         dx = 100 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0, np.nan)
         x["adx"] = dx.ewm(alpha=1 / ATR_PERIOD, adjust=False).mean()
 
-        # D1: ignore today's still-forming bar. H1: select the most recent
-        # candle whose full hour has elapsed (rather than blindly using iloc[-2]).
+        now = pd.Timestamp(datetime.now(timezone.utc))
+        idx = pd.DatetimeIndex(x.index)
+        if idx.tz is None:
+            idx = idx.tz_localize("UTC")
+        else:
+            idx = idx.tz_convert("UTC")
+
         if timeframe == "D1":
             row_pos = len(x) - 2
-        else:
-            now = pd.Timestamp(datetime.now(timezone.utc))
-            idx = pd.DatetimeIndex(x.index)
-            if idx.tz is None:
-                idx = idx.tz_localize("UTC")
-            else:
-                idx = idx.tz_convert("UTC")
+            max_age = 96
+        elif timeframe == "H4":
+            cutoff = now.floor("4h") - pd.Timedelta(hours=4)
+            eligible = np.flatnonzero(idx <= cutoff)
+            if len(eligible) == 0:
+                raise ValueError("no completed H4 candle available")
+            row_pos = int(eligible[-1])
+            max_age = 8.5
+        elif timeframe == "H1":
             cutoff = now.floor("h") - pd.Timedelta(hours=1)
             eligible = np.flatnonzero(idx <= cutoff)
             if len(eligible) == 0:
                 raise ValueError("no completed H1 candle available")
             row_pos = int(eligible[-1])
+            max_age = 3.5
+        else:
+            raise ValueError(f"unsupported timeframe: {timeframe}")
+
         if row_pos < 5:
             raise ValueError("not enough completed candles")
         row = x.iloc[row_pos]
@@ -65,8 +76,6 @@ class TechnicalAgent:
         else:
             stamp = stamp.tz_convert("UTC")
         age_hours = (datetime.now(timezone.utc) - stamp.to_pydatetime()).total_seconds() / 3600
-        max_age = 96 if timeframe == "D1" else 3.5
-        fresh = age_hours >= -1 and age_hours <= max_age
 
         trend = "BULLISH" if row.ema_fast > row.ema_slow else "BEARISH" if row.ema_fast < row.ema_slow else "NEUTRAL"
         slope = "UP" if row.ema_fast > prior.ema_fast else "DOWN" if row.ema_fast < prior.ema_fast else "FLAT"
@@ -80,7 +89,7 @@ class TechnicalAgent:
             "atr": float(row.atr) if pd.notna(row.atr) else None,
             "adx": float(row.adx) if pd.notna(row.adx) else None,
             "bar_time": stamp.isoformat(), "age_hours": round(age_hours, 2),
-            "fresh": fresh, "valid": valid,
+            "fresh": age_hours >= -1 and age_hours <= max_age, "valid": valid,
         }
 
     def analyze(self, frames):

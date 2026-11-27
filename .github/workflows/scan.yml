@@ -2,6 +2,11 @@ name: Forex Intelligence Scan
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - forex-swing-v2
+    paths:
+      - ".github/workflows/scan.yml"
   schedule:
     - cron: "*/15 * * * *"
 
