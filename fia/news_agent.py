@@ -52,9 +52,12 @@ def _published(entry):
 
 
 def classify(title, source=""):
-    text = f"{title} {source}".lower()
+    title_text = title.lower()
     assets = set()
     matched = []
+    if any(term in title_text for term in LOW_VALUE_TERMS):
+        return "LOW", [], []
+    text = title_text
     for phrase, affected in HIGH_IMPACT.items():
         if phrase in text:
             matched.append(phrase)
