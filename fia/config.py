@@ -37,6 +37,7 @@ NEWS_MAX_ITEMS = 40
 
 # ShowMyTrades public calendar API: no key; documented 15-minute cache.
 CALENDAR_URL = "https://showmytrades.com/api/public/calendar/v1"
+CALENDAR_FALLBACK_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
 CALENDAR_CURRENCIES = ("USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF")
 CALENDAR_DAYS_AHEAD = 7
 
