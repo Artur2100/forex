@@ -316,4 +316,6 @@ def run_day_agent(symbols, context_by_symbol, calendar_agent, calendar, news):
     state["sent"] = state.get("sent", [])[-500:]
     import json
     DAY_STATE_PATH.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    for message in messages:
+        send_telegram(message[:3900])
     return decisions
