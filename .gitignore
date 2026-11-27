@@ -2,3 +2,4 @@ __pycache__/
 *.py[cod]
 .env
 fia_state.json
+day_state.json\n
