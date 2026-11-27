@@ -4,6 +4,7 @@ from .market_agent import MarketAgent
 from .technical_agent import TechnicalAgent
 from .news_agent import NewsAgent
 from .macro_agent import MacroContextAgent
+from .calendar_agent import EconomicCalendarAgent
 from .correlation_agent import CorrelationAgent
 from .risk_agent import RiskAgent
 from .decision_agent import ChiefAnalyst
@@ -21,18 +22,21 @@ def fmt_price(value):
 def main():
     market_agent, technical_agent = MarketAgent(), TechnicalAgent()
     news_agent, macro_agent = NewsAgent(), MacroContextAgent()
+    calendar_agent = EconomicCalendarAgent()
     correlation_agent, risk_agent, chief = CorrelationAgent(), RiskAgent(), ChiefAnalyst()
     state = load_state()
     journal = load_journal()
     news = news_agent.analyze()
     macro = macro_agent.analyze(news)
+    calendar = calendar_agent.analyze()
     symbol_results, decisions, diagnostics = {}, [], []
 
     for symbol, ticker in SYMBOLS.items():
+        event_risk = calendar_agent.risk_for_symbol(symbol, calendar)
         frames, market_errors = market_agent.fetch(ticker)
         technical, technical_errors = technical_agent.analyze(frames) if frames else ({}, {})
         symbol_results[symbol] = {"technical": technical, "frames": frames}
-        decision = chief.decide(symbol, technical, news, macro, None, risk_agent)
+        decision = chief.decide(symbol, technical, news, macro, None, risk_agent, event_risk)
         decisions.append(decision)
         if market_errors or technical_errors or decision["status"] not in ("TECHNICAL_PREALERT", "NO_SETUP"):
             details = "; ".join(market_errors + list(technical_errors.values()))
@@ -72,24 +76,26 @@ def main():
     save_state(state)
     stats = journal_summary(journal)
     wr = "н/д" if stats["win_rate_pct"] is None else f"{stats['win_rate_pct']:.1f}%"
+    blocked = sum(d["status"] == "EVENT_RISK_BLOCK" for d in decisions)
     digest = (
         f"Скан {now}\n"
-        f"Пар: {len(SYMBOLS)} | новых сетапов: {len(messages)}\n"
+        f"Пар: {len(SYMBOLS)} | новых сетапов: {len(messages)} | заблокировано календарём: {blocked}\n"
         f"Журнал: {stats['total_alerts']} | открыто: {stats['open']} | TP: {stats['wins']} | SL: {stats['losses']} | WR: {wr}"
     )
     if diagnostics:
         digest += "\n\nДиагностика:\n" + "\n".join(diagnostics[:8])
+    digest += "\n\n" + calendar_agent.upcoming_summary(calendar)
     headlines = news.get("items", [])[:6]
     if headlines:
         digest += "\n\nНовости (приоритетные):\n" + "\n".join(
             f"• [{item['impact']}] {item['title']} ({item['source']})" for item in headlines
         )
     digest += (
-        f"\n\nНовостной охват: HIGH {news.get('high_impact_count', 0)}"
+        f"\n\nНовостной охват RSS: HIGH {news.get('high_impact_count', 0)}"
         f" | MEDIUM {news.get('medium_impact_count', 0)}"
         f" | ошибок RSS: {len(news.get('errors', []))}"
     )
-    digest += "\nRSS не заменяет экономический календарь."
+    digest += "\nКалендарь ShowMyTrades: расписание и значения; прогнозы могут отсутствовать. Все времена UTC."
     print(digest)
     send_telegram(digest[:3900])
     for msg in messages:
