@@ -47,6 +47,10 @@ class ChiefAnalyst:
             return {
                 "status": "TECHNICAL_PREALERT", "symbol": symbol, "direction": direction,
                 "d1": d1, "h4": h4, "h1": h1, "levels": levels,
-                "reason": "D1/H4/H1 trend, slope, RSI and ADX aligned; final signal gate remains closed.",
+                "reason": "Технические условия совпали, но защитный шлюз данных/новостей закрыт.",
             }
-        return {"status": "FINAL_SIGNAL_NOT_IMPLEMENTED", "symbol": symbol}
+        return {
+            "status": "FINAL_SIGNAL", "symbol": symbol, "direction": direction,
+            "d1": d1, "h4": h4, "h1": h1, "levels": levels,
+            "reason": "D1/H4/H1 alignment, EMA slope, RSI/ADX and calendar/news checks passed.",
+        }
