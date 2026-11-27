@@ -230,5 +230,6 @@ class EconomicCalendarAgent:
             if event["actual"]:
                 values.append(f"факт {event['actual']}")
             suffix = f" | {', '.join(values)}" if values else ""
-            lines.append(f"• [{event['impact'].upper()}] {when} UTC · {event['currency']} · {event['title']}{suffix}")
+            confidence = f" | дата: {event['confidence']}" if event.get("confidence") else ""
+            lines.append(f"• [{event['impact'].upper()}] {when} UTC · {event['currency']} · {event['title']}{suffix}{confidence}")
         return "\n".join(lines)
