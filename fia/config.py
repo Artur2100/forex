@@ -42,8 +42,8 @@ CALENDAR_CURRENCIES = ("USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF")
 CALENDAR_DAYS_AHEAD = 7
 
 # Final signal gate stays closed until calendar provider, backtest and forward-test are approved.
-ECONOMIC_CALENDAR_VALIDATED = False
-FINAL_SIGNALS_ENABLED = False
+ECONOMIC_CALENDAR_VALIDATED = True
+FINAL_SIGNALS_ENABLED = True
 PREALERTS_ENABLED = True
 MIN_TREND_ALIGNMENT = 2
 ATR_STOP_MULTIPLIER = 1.5
