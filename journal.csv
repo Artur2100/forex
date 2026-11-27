@@ -1,2 +1,3 @@
 id,created_utc,symbol,direction,source,entry,sl,tp,status,outcome_r,resolved_utc,bars_to_resolution,notes
 USD/JPY|LONG|2026-11-26T14:00:00+00:00,2026-11-26T15:27:54.771680+00:00,USD/JPY,LONG,Yahoo Finance,159.201004,158.9950251,159.8189408,OPEN,,,,Hypothetical alert; assumes entry at completed H1 close; not a real executed trade.
+EUR/USD|SHORT|2026-11-27T17:00:00+00:00,2026-11-27T18:12:36.229442+00:00,EUR/USD,SHORT,Yahoo Finance,1.093972206,1.095355682,1.089821779,OPEN,,,,Hypothetical alert; assumes entry at completed H1 close; not a real executed trade.
