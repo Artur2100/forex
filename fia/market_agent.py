@@ -73,7 +73,7 @@ class MarketAgent:
                     errors.append(f"{tf}/{candidate}: {exc}")
             # Keep stale data only so the analysis layer can explicitly reject it;
             # never silently relabel a futures proxy as spot gold.
-            chosen = selected or stale_candidate
+            chosen = selected if selected is not None else stale_candidate
             if chosen is not None:
                 result[tf] = chosen
                 if not chosen.attrs.get("is_fresh", False):
