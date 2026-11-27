@@ -5,13 +5,12 @@ SYMBOLS = {
     "AUD/USD": "AUDUSD=X",
     "USD/CAD": "CAD=X",
     "USD/CHF": "CHF=X",
-    # Yahoo ticker is COMEX gold futures, not spot XAU/USD.
-    "XAU/USD (GC futures proxy)": "GC=F",
+    # Spot XAU/USD first; COMEX GC futures are fallback proxy only.
+    "XAU/USD": ["XAUUSD=X", "GC=F"],
 }
 
 TIMEFRAMES = {
     "D1": {"interval": "1d", "period": "2y"},
-    # Yahoo Finance limits intraday history; 60 days is a safer H1 request.
     "H1": {"interval": "1h", "period": "60d"},
 }
 
@@ -20,12 +19,21 @@ EMA_SLOW = 50
 RSI_PERIOD = 14
 ATR_PERIOD = 14
 
+# Official primary sources. RSS is a news monitor, not an economic calendar.
 NEWS_FEEDS = [
     "https://www.federalreserve.gov/feeds/press_all.xml",
     "https://www.ecb.europa.eu/rss/press.html",
     "https://www.bankofcanada.ca/content_type/press-releases/feed/",
     "https://www.rba.gov.au/rss/rss-cb-media-releases.xml",
+    "https://www.bankofengland.co.uk/rss/news",
+    "https://www.boj.or.jp/en/rss/whatsnew.xml",
+    "https://www.bls.gov/feed/news_release/empsit.rss",
+    "https://www.bls.gov/feed/news_release/cpi.rss",
 ]
+
+NEWS_MAX_AGE_HOURS = 96
+NEWS_MAX_ITEMS_PER_FEED = 20
+NEWS_MAX_ITEMS = 40
 
 # Final signal gate stays closed until calendar provider, backtest and forward-test are approved.
 ECONOMIC_CALENDAR_VALIDATED = False
