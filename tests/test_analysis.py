@@ -56,6 +56,31 @@ class RiskTests(unittest.TestCase):
         self.assertFalse(add_alert(rows, d))
         self.assertEqual(summary(rows)["total_alerts"], 1)
 
+    def test_aligned_setup_emits_final_signal_when_guards_are_ready(self):
+        from fia.config import ECONOMIC_CALENDAR_VALIDATED, FINAL_SIGNALS_ENABLED
+        self.assertTrue(ECONOMIC_CALENDAR_VALIDATED)
+        self.assertTrue(FINAL_SIGNALS_ENABLED)
+        base = {"valid": True, "fresh": True, "trend": "BULLISH", "ema_slope": "UP",
+                "rsi": 60.0, "adx": 25.0, "close": 100.0, "atr": 2.0}
+        result = ChiefAnalyst().decide(
+            "TEST", {"D1": dict(base), "H4": dict(base), "H1": dict(base)},
+            {"ready": True}, {}, None, RiskAgent(),
+            {"blocked": False, "status": "NORMAL"},
+        )
+        self.assertEqual(result["status"], "FINAL_SIGNAL")
+        self.assertEqual(result["direction"], "LONG")
+        self.assertAlmostEqual(result["levels"]["rr_target"], 3.0)
+
+    def test_calendar_block_prevents_final_signal(self):
+        base = {"valid": True, "fresh": True, "trend": "BULLISH", "ema_slope": "UP",
+                "rsi": 60.0, "adx": 25.0, "close": 100.0, "atr": 2.0}
+        result = ChiefAnalyst().decide(
+            "TEST", {"D1": dict(base), "H4": dict(base), "H1": dict(base)},
+            {"ready": True}, {}, None, RiskAgent(),
+            {"blocked": True, "reason": "High impact event"},
+        )
+        self.assertEqual(result["status"], "EVENT_RISK_BLOCK")
+
 
 if __name__ == "__main__":
     unittest.main()
