@@ -20,8 +20,27 @@ class NewsClassificationTests(unittest.TestCase):
         self.assertEqual(assets, [])
 
     def test_medium_macro_release(self):
-        impact, _, _ = classify("Monthly retail sales report", "Statistics agency")
+        impact, assets, _ = classify("Monthly retail sales report", "Statistics agency")
         self.assertEqual(impact, "MEDIUM")
+        self.assertEqual(assets, [])
+
+    def test_generic_minutes_word_is_not_high(self):
+        impact, assets, _ = classify("Japanese Government Bonds Held by the Bank of Japan", "Bank of Japan")
+        self.assertEqual(impact, "INFO")
+        self.assertEqual(assets, [])
+
+    def test_non_macro_central_bank_agreement_is_not_high(self):
+        impact, _, _ = classify("ECB and Sveriges Riksbank conclude agreement for Sweden to join T2", "ECB")
+        self.assertEqual(impact, "INFO")
+
+    def test_summary_can_identify_explicit_rate_decision(self):
+        impact, assets, _ = classify(
+            "Central bank publishes statement",
+            "Bank of England",
+            "The Monetary Policy Committee announced its interest rate decision today.",
+        )
+        self.assertEqual(impact, "HIGH")
+        self.assertIn("GBP", assets)
 
 
 class GoldDataFreshnessTests(unittest.TestCase):
