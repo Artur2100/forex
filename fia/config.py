@@ -35,6 +35,11 @@ NEWS_MAX_AGE_HOURS = 96
 NEWS_MAX_ITEMS_PER_FEED = 20
 NEWS_MAX_ITEMS = 40
 
+# ShowMyTrades public calendar API: no key; documented 15-minute cache.
+CALENDAR_URL = "https://showmytrades.com/api/public/calendar/v1"
+CALENDAR_CURRENCIES = ("USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF")
+CALENDAR_DAYS_AHEAD = 7
+
 # Final signal gate stays closed until calendar provider, backtest and forward-test are approved.
 ECONOMIC_CALENDAR_VALIDATED = False
 FINAL_SIGNALS_ENABLED = False
