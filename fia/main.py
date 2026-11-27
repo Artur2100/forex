@@ -95,7 +95,15 @@ def main():
         f" | MEDIUM {news.get('medium_impact_count', 0)}"
         f" | ошибок RSS: {len(news.get('errors', []))}"
     )
-    digest += "\nКалендарь ShowMyTrades: расписание и значения; прогнозы могут отсутствовать. Все времена UTC."
+    if calendar.get("ready"):
+        digest += f"\nИсточник календаря: {calendar.get('provider', 'unknown')}."
+        if calendar.get("coverage_warning"):
+            digest += f"\n⚠️ {calendar['coverage_warning']}"
+        if calendar.get("errors"):
+            digest += "\nПервичный источник недоступен: " + "; ".join(calendar["errors"][:1])
+    else:
+        digest += "\nКалендарь недоступен во всех источниках: новые предупреждения заблокированы."
+    digest += "\nВремя событий указано в UTC. RSS — отдельный новостной монитор, не замена календарю."
     print(digest)
     send_telegram(digest[:3900])
     for msg in messages:
