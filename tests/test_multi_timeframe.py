@@ -1,16 +1,14 @@
 import unittest
-from datetime import datetime, timezone
 
 import pandas as pd
 
 from fia.market_agent import MarketAgent
-from fia.technical_agent import TechnicalAgent
 from fia.decision_agent import ChiefAnalyst
 from fia.risk_agent import RiskAgent
 
 
 class H4AggregationTests(unittest.TestCase):
-    def test_h4_aggregates_four_completed_hourly_bars(self):
+    def test_h4_aggregates_only_fully_closed_hourly_bars(self):
         now = pd.Timestamp("2026-11-27T12:30:00Z")
         idx = pd.date_range("2026-11-27T04:00:00Z", periods=9, freq="h")
         hourly = pd.DataFrame({
@@ -22,12 +20,20 @@ class H4AggregationTests(unittest.TestCase):
         }, index=idx)
         hourly.attrs["source_symbol"] = "TEST"
         h4 = MarketAgent.build_h4(hourly, now=now)
-        self.assertEqual(list(h4.index), [pd.Timestamp("2026-11-27T04:00:00Z")])
+        self.assertEqual(list(h4.index), [
+            pd.Timestamp("2026-11-27T04:00:00Z"),
+            pd.Timestamp("2026-11-27T08:00:00Z"),
+        ])
         self.assertEqual(h4.iloc[0]["open"], 100)
         self.assertEqual(h4.iloc[0]["high"], 104)
         self.assertEqual(h4.iloc[0]["low"], 99)
         self.assertEqual(h4.iloc[0]["close"], 103)
         self.assertEqual(h4.iloc[0]["volume"], 40)
+        self.assertEqual(h4.iloc[1]["open"], 104)
+        self.assertEqual(h4.iloc[1]["high"], 108)
+        self.assertEqual(h4.iloc[1]["low"], 103)
+        self.assertEqual(h4.iloc[1]["close"], 107)
+        self.assertEqual(h4.iloc[1]["volume"], 40)
         self.assertEqual(h4.attrs["source_symbol"], "TEST")
 
     def test_incomplete_h4_interval_is_excluded(self):
