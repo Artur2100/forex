@@ -41,7 +41,7 @@ CALENDAR_FALLBACK_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json
 CALENDAR_CURRENCIES = ("USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF")
 CALENDAR_DAYS_AHEAD = 7
 
-# Final signal gate stays closed until calendar provider, backtest and forward-test are approved.
+# Enable final Telegram signals; each scan still fails closed unless calendar and RSS sources are available.
 ECONOMIC_CALENDAR_VALIDATED = True
 FINAL_SIGNALS_ENABLED = True
 PREALERTS_ENABLED = True
