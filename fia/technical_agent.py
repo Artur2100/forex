@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from .config import EMA_FAST, EMA_SLOW, RSI_PERIOD, ATR_PERIOD
 
+
 class TechnicalAgent:
     name = "Technical Analysis Agent"
 
@@ -38,10 +39,27 @@ class TechnicalAgent:
         dx = 100 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0, np.nan)
         x["adx"] = dx.ewm(alpha=1 / ATR_PERIOD, adjust=False).mean()
 
-        # Use the most recent completed candle, never the currently-forming candle.
-        row = x.iloc[-2]
-        prior = x.iloc[-5]
-        stamp = pd.Timestamp(x.index[-2])
+        # D1: ignore today's still-forming bar. H1: select the most recent
+        # candle whose full hour has elapsed (rather than blindly using iloc[-2]).
+        if timeframe == "D1":
+            row_pos = len(x) - 2
+        else:
+            now = pd.Timestamp(datetime.now(timezone.utc))
+            idx = pd.DatetimeIndex(x.index)
+            if idx.tz is None:
+                idx = idx.tz_localize("UTC")
+            else:
+                idx = idx.tz_convert("UTC")
+            cutoff = now.floor("h") - pd.Timedelta(hours=1)
+            eligible = np.flatnonzero(idx <= cutoff)
+            if len(eligible) == 0:
+                raise ValueError("no completed H1 candle available")
+            row_pos = int(eligible[-1])
+        if row_pos < 5:
+            raise ValueError("not enough completed candles")
+        row = x.iloc[row_pos]
+        prior = x.iloc[max(0, row_pos - 3)]
+        stamp = pd.Timestamp(x.index[row_pos])
         if stamp.tzinfo is None:
             stamp = stamp.tz_localize("UTC")
         else:
@@ -56,18 +74,13 @@ class TechnicalAgent:
         valid = all(pd.notna(v) and np.isfinite(float(v)) for v in values) and float(row.close) > 0 and float(row.atr) > 0
 
         return {
-            "trend": trend,
-            "ema_slope": slope,
-            "close": float(row.close),
-            "ema_fast": float(row.ema_fast),
-            "ema_slow": float(row.ema_slow),
+            "trend": trend, "ema_slope": slope, "close": float(row.close),
+            "ema_fast": float(row.ema_fast), "ema_slow": float(row.ema_slow),
             "rsi": float(row.rsi) if pd.notna(row.rsi) else None,
             "atr": float(row.atr) if pd.notna(row.atr) else None,
             "adx": float(row.adx) if pd.notna(row.adx) else None,
-            "bar_time": stamp.isoformat(),
-            "age_hours": round(age_hours, 2),
-            "fresh": fresh,
-            "valid": valid,
+            "bar_time": stamp.isoformat(), "age_hours": round(age_hours, 2),
+            "fresh": fresh, "valid": valid,
         }
 
     def analyze(self, frames):
@@ -75,6 +88,8 @@ class TechnicalAgent:
         for tf, df in frames.items():
             try:
                 results[tf] = self.analyze_frame(df, tf)
+                if df.attrs.get("is_fresh") is False:
+                    results[tf]["fresh"] = False
             except Exception as exc:
                 errors[tf] = str(exc)
         return results, errors
