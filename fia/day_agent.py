@@ -316,15 +316,4 @@ def run_day_agent(symbols, context_by_symbol, calendar_agent, calendar, news):
     state["sent"] = state.get("sent", [])[-500:]
     import json
     DAY_STATE_PATH.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
-    stats = day_journal_summary(journal)
-    wr = "н/д" if stats["wr"] is None else f"{stats['wr']:.1f}%"
-    digest = (
-        f"DAY-агент: финальных условий {sum(d['status'] == 'DAY_FINAL_SIGNAL' for d in decisions)}"
-        f" | открыто {stats['open']} | TP {stats['wins']} | SL {stats['losses']} | WR {wr} | net {stats['net_r']:+.1f}R"
-    )
-    if errors:
-        digest += "\nM15 диагностика: " + "; ".join(errors[:3])
-    send_telegram(digest[:3900])
-    for message in messages:
-        send_telegram(message[:3900])
     return decisions
