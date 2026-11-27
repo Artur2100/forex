@@ -54,7 +54,8 @@ def main():
         calendar_agent, calendar, news,
     )
 
-    correlation = correlation_agent.analyze({s: v[\"technical\"] for s, v in symbol_results.items()})\n    frames_by_symbol = {s: v["frames"] for s, v in symbol_results.items()}
+    correlation = correlation_agent.analyze({s: v["technical"] for s, v in symbol_results.items()})
+    frames_by_symbol = {s: v["frames"] for s, v in symbol_results.items()}
     journal = update_outcomes(journal, frames_by_symbol)
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     messages = []
