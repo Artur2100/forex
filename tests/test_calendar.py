@@ -47,7 +47,7 @@ class CalendarTests(unittest.TestCase):
         response = Mock(status_code=200)
         response.json.return_value = {"ok": True}
         self.session.get.side_effect = [requests.Timeout("slow"), response]
-        payload = self.agent._fetch_payload({})
+        payload = self.agent._get_json("https://calendar.test", params={})
         self.assertEqual(payload, {"ok": True})
         self.assertEqual(self.session.get.call_count, 2)
         self.sleep.assert_called_once_with(1)
