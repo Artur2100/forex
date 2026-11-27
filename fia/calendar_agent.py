@@ -1,4 +1,6 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
+import time
+
 import requests
 
 from .config import CALENDAR_URL, CALENDAR_CURRENCIES, CALENDAR_DAYS_AHEAD
@@ -14,10 +16,8 @@ SYMBOL_CURRENCIES = {
     "XAU/USD": {"USD"},
 }
 
-WINDOWS_MINUTES = {
-    "high": (45, 30),
-    "medium": (20, 15),
-}
+WINDOWS_MINUTES = {"high": (45, 30), "medium": (20, 15)}
+RETRYABLE_STATUS = {429, 500, 502, 503, 504}
 
 
 class EconomicCalendarAgent:
@@ -25,8 +25,34 @@ class EconomicCalendarAgent:
 
     name = "Economic Calendar Agent"
 
-    def __init__(self, session=None):
+    def __init__(self, session=None, sleep=time.sleep):
         self.session = session or requests.Session()
+        self.sleep = sleep
+
+    def _fetch_payload(self, params):
+        last_error = None
+        for attempt in range(3):
+            try:
+                response = self.session.get(CALENDAR_URL, params=params, timeout=(5, 12))
+                if response.status_code in RETRYABLE_STATUS and attempt < 2:
+                    retry_after = response.headers.get("Retry-After", "")
+                    try:
+                        delay = min(8, max(1, int(retry_after)))
+                    except (TypeError, ValueError):
+                        delay = 1 + attempt * 2
+                    self.sleep(delay)
+                    continue
+                response.raise_for_status()
+                return response.json()
+            except (requests.Timeout, requests.ConnectionError) as exc:
+                last_error = exc
+                if attempt < 2:
+                    self.sleep(1 + attempt * 2)
+                    continue
+                raise
+        if last_error:
+            raise last_error
+        raise RuntimeError("calendar request failed after retries")
 
     def analyze(self):
         params = {
@@ -36,21 +62,22 @@ class EconomicCalendarAgent:
             "format": "json",
         }
         try:
-            response = self.session.get(CALENDAR_URL, params=params, timeout=20)
-            response.raise_for_status()
-            payload = response.json()
+            payload = self._fetch_payload(params)
             server_time = int(payload["server_time"])
-            generated_at = datetime.fromisoformat(
-                payload.get("generated_at", payload["server_time_iso"]).replace("Z", "+00:00")
-            )
+            generated_value = payload.get("generated_at") or payload.get("server_time_iso")
+            if not generated_value:
+                raise ValueError("calendar response has no generated_at/server_time_iso")
+            generated_at = datetime.fromisoformat(str(generated_value).replace("Z", "+00:00"))
             if generated_at.tzinfo is None:
                 generated_at = generated_at.replace(tzinfo=timezone.utc)
             age_seconds = (datetime.now(timezone.utc) - generated_at.astimezone(timezone.utc)).total_seconds()
-            if age_seconds > 30 * 60 or age_seconds < -5 * 60:
+            # Calendar body is cached by provider for 15 minutes; allow a little delivery margin.
+            if age_seconds > 25 * 60 or age_seconds < -5 * 60:
                 raise ValueError(f"calendar payload is stale or clock-skewed ({age_seconds:.0f}s)")
             events = payload.get("events")
             if not isinstance(events, list):
                 raise ValueError("calendar response has no valid events list")
+
             normalized = []
             for event in events:
                 try:
@@ -75,9 +102,11 @@ class EconomicCalendarAgent:
                     })
                 except (KeyError, TypeError, ValueError, OverflowError):
                     continue
+
             normalized.sort(key=lambda item: item["ts"])
             return {
                 "ready": True,
+                "provider": "ShowMyTrades",
                 "server_time": server_time,
                 "generated_at": generated_at.astimezone(timezone.utc).isoformat(),
                 "events": normalized,
@@ -86,6 +115,7 @@ class EconomicCalendarAgent:
         except Exception as exc:
             return {
                 "ready": False,
+                "provider": "ShowMyTrades",
                 "server_time": int(datetime.now(timezone.utc).timestamp()),
                 "generated_at": None,
                 "events": [],
@@ -130,10 +160,7 @@ class EconomicCalendarAgent:
                 "events": [item[0] for item in active],
             }
 
-        upcoming = [
-            event for event in relevant
-            if event["ts"] >= now_ts
-        ]
+        upcoming = [event for event in relevant if event["ts"] >= now_ts]
         return {
             "blocked": False,
             "status": "NORMAL",
@@ -165,7 +192,8 @@ class EconomicCalendarAgent:
                 values.append(f"факт {event['actual']}")
             suffix = f" | {', '.join(values)}" if values else ""
             status = f" | {event['status']}" if event["status"] not in ("scheduled", "") else ""
+            confidence = f" | дата: {event['confidence']}" if event.get("confidence") else ""
             lines.append(
-                f"• [{event['impact'].upper()}] {when} UTC · {event['currency']} · {event['title']}{suffix}{status}"
+                f"• [{event['impact'].upper()}] {when} UTC · {event['currency']} · {event['title']}{suffix}{status}{confidence}"
             )
         return "\n".join(lines)
