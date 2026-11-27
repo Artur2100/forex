@@ -11,6 +11,7 @@ from .decision_agent import ChiefAnalyst
 from .notifier import send_telegram
 from .state import load_state, save_state
 from .journal import load_journal, save_journal, add_alert, update_outcomes, summary as journal_summary
+from .day_agent import run_day_agent
 
 
 def fmt_price(value):
@@ -45,6 +46,13 @@ def main():
             used = sorted({frame.attrs.get("source_symbol", "unknown") for frame in frames.values()})
             label = "Yahoo spot XAUUSD=X" if used and used == ["XAUUSD=X"] else f"source/proxy: {', '.join(used) or 'unavailable'}"
             diagnostics.append(f"• XAU/USD data source: {label}")
+
+    # Day Trading runs independently but reuses the already-fetched H4/H1 context and shared calendar/news checks.
+    day_decisions = run_day_agent(
+        SYMBOLS,
+        {s: v["technical"] for s, v in symbol_results.items()},
+        calendar_agent, calendar, news,
+    )
 
     correlation = correlation_agent.analyze({s: v["technical"] for s, v in symbol_results.items()})
     frames_by_symbol = {s: v["frames"] for s, v in symbol_results.items()}
