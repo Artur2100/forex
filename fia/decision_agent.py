@@ -1,9 +1,10 @@
 from .config import ECONOMIC_CALENDAR_VALIDATED, FINAL_SIGNALS_ENABLED, PREALERTS_ENABLED
 
+
 class ChiefAnalyst:
     name = "Chief Trading Analyst"
 
-    def decide(self, symbol, technical, news, macro, correlation, risk_agent):
+    def decide(self, symbol, technical, news, macro, correlation, risk_agent, event_risk=None):
         d1, h1 = technical.get("D1"), technical.get("H1")
         if not d1 or not h1:
             return {"status": "DATA_INSUFFICIENT", "symbol": symbol, "reason": "D1 or H1 data unavailable"}
@@ -17,7 +18,6 @@ class ChiefAnalyst:
             return {"status": "NO_SETUP", "symbol": symbol, "reason": "D1/H1 trend not aligned"}
         direction = "LONG" if d1["trend"] == "BULLISH" else "SHORT"
 
-        # Require trend slope and directional momentum; avoid weak or exhausted setups.
         if d1.get("ema_slope") != ("UP" if direction == "LONG" else "DOWN") or h1.get("ema_slope") != ("UP" if direction == "LONG" else "DOWN"):
             return {"status": "FILTERED", "symbol": symbol, "reason": "EMA slope does not confirm trend"}
         rsi = h1.get("rsi")
@@ -28,6 +28,14 @@ class ChiefAnalyst:
             return {"status": "FILTERED", "symbol": symbol, "reason": "H1 RSI outside long confirmation range"}
         if direction == "SHORT" and not (25 <= rsi <= 50):
             return {"status": "FILTERED", "symbol": symbol, "reason": "H1 RSI outside short confirmation range"}
+
+        if event_risk and event_risk.get("blocked"):
+            return {
+                "status": "EVENT_RISK_BLOCK",
+                "symbol": symbol,
+                "direction": direction,
+                "reason": event_risk.get("reason", "Calendar risk window active"),
+            }
 
         levels = risk_agent.provisional_levels(direction, h1["close"], h1["atr"])
         if not PREALERTS_ENABLED or not levels:
@@ -41,6 +49,6 @@ class ChiefAnalyst:
                 "d1": d1,
                 "h1": h1,
                 "levels": levels,
-                "reason": "Trend, slope, RSI and ADX aligned; event calendar and strategy validation gates remain closed."
+                "reason": "Trend, slope, RSI and ADX aligned; final signal gate remains closed."
             }
         return {"status": "FINAL_SIGNAL_NOT_IMPLEMENTED", "symbol": symbol}
